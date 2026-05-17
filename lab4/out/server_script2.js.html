@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: server_script2.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: server_script2.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import http from "node:http";
+import { URL } from "node:url";
+import fs from "node:fs";
+
+const GUESTBOOK_FILE = "guestbook.json";
+
+/**
+ * Odczytuje wpisy z pliku JSON.
+ * @returns {Array} Tablica obiektów z wpisami.
+ */
+function getEntries() {
+    try {
+        if (fs.existsSync(GUESTBOOK_FILE)) {
+            const data = fs.readFileSync(GUESTBOOK_FILE, "utf-8");
+            return JSON.parse(data);
+        }
+    } catch (err) {
+        console.error("Błąd podczas odczytu księgi gości:", err);
+    }
+    return [];
+}
+
+/**
+ * Zapisuje nowy wpis do pliku JSON.
+ * @param {string} name - Imię i nazwisko
+ * @param {string} message - Treść wpisu
+ */
+function saveEntry(name, message) {
+    const entries = getEntries();
+    entries.push({ name, message });
+    fs.writeFileSync(GUESTBOOK_FILE, JSON.stringify(entries, null, 2), "utf-8");
+}
+
+/**
+ * Funkcja ucieczkowa (escape) dla znaków specjalnych HTML, zapobiega atakom XSS.
+ */
+function escapeHTML(str) {
+    return str.replace(/[&amp;&lt;>'"]/g, 
+        tag => ({
+            '&amp;': '&amp;amp;',
+            '&lt;': '&amp;lt;',
+            '>': '&amp;gt;',
+            "'": '&amp;#39;',
+            '"': '&amp;quot;'
+        }[tag] || tag)
+    );
+}
+
+function requestListener(request, response) {
+    console.log(`Żądanie: ${request.method} ${request.url}`);
+    const url = new URL(request.url, `http://${request.headers.host}`);
+    const route = [request.method, url.pathname].join(" ");
+
+    switch (route) {
+        case "GET /": {
+            // 1. Odczytaj wszystkie wpisy
+            const entries = getEntries();
+            
+            // 2. Wygeneruj kod HTML dla wpisów
+            const entriesHTML = entries.map(entry => `
+                &lt;div style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
+                    &lt;strong>${escapeHTML(entry.name)}&lt;/strong>&lt;br>
+                    &lt;p style="white-space: pre-wrap; margin: 5px 0;">${escapeHTML(entry.message)}&lt;/p>
+                &lt;/div>
+            `).join('');
+
+            // 3. Zwróć stronę HTML z formularzem i wpisami
+            response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+            response.write(`
+&lt;!DOCTYPE html>
+&lt;html lang="pl">
+  &lt;head>
+    &lt;meta charset="utf-8">
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1">
+    &lt;title>Księga gości&lt;/title>
+    &lt;style>
+      body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+      textarea { width: 100%; box-sizing: border-box; }
+      input[type="text"] { width: 100%; box-sizing: border-box; padding: 5px;}
+      button { padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+      button:hover { background-color: #0056b3; }
+    &lt;/style>
+  &lt;/head>
+  &lt;body>
+    &lt;main>
+      &lt;h1>Księga gości&lt;/h1>
+      
+      &lt;section>
+        &lt;h2>Poprzednie wpisy&lt;/h2>
+        ${entriesHTML || "&lt;p>Brak wpisów. Bądź pierwszy!&lt;/p>"}
+      &lt;/section>
+
+      &lt;hr>
+
+      &lt;section>
+        &lt;h2>Nowy wpis:&lt;/h2>
+        &lt;!-- Używamy metody POST do wysyłania danych na serwer -->
+        &lt;form method="POST" action="/submit">
+          &lt;label for="name">Twoje imię i nazwisko&lt;/label>&lt;br>
+          &lt;input type="text" id="name" name="name" required>&lt;br>&lt;br>
+          
+          &lt;label for="message">Treść wpisu&lt;/label>&lt;br>
+          &lt;textarea id="message" name="message" rows="4" required>&lt;/textarea>&lt;br>&lt;br>
+          
+          &lt;button type="submit">Dodaj wpis&lt;/button>
+        &lt;/form>
+      &lt;/section>
+    &lt;/main>
+  &lt;/body>
+&lt;/html>`);
+            response.end();
+            break;
+        }
+
+        case "POST /submit": {
+            // 1. Odbiór danych wysłanych z formularza za pomocą metody POST
+            let body = '';
+            
+            // Zdarzenie 'data' jest emitowane, gdy przychodzą kolejne fragmenty (chunks) danych
+            request.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            // Zdarzenie 'end' jest emitowane po odebraniu całych danych
+            request.on('end', () => {
+                // Dekodowanie danych typu 'application/x-www-form-urlencoded' (domyślny typ formularzy)
+                const params = new URLSearchParams(body);
+                const name = params.get("name");
+                const message = params.get("message");
+                
+                // Jeśli przysłano wymagane pola, zapisz wpis
+                if (name &amp;&amp; message) {
+                    saveEntry(name, message);
+                }
+
+                // Przekieruj z powrotem na stronę główną
+                response.writeHead(302, { "Location": "/" });
+                response.end();
+            });
+            break;
+        }
+
+        default:
+            response.writeHead(501, { "Content-Type": "text/plain; charset=utf-8" });
+            response.write("Błąd 501: Nie zaimplementowano");
+            response.end();
+    }
+}
+
+const server = http.createServer(requestListener);
+server.listen(8000, () => {
+    console.log("Księga gości została uruchomiona na porcie 8000");
+    console.log("Sprawdź: http://localhost:8000/");
+    console.log('Aby zatrzymać serwer, naciśnij "CTRL + C"');
+});
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#escapeHTML">escapeHTML</a></li><li><a href="global.html#getEntries">getEntries</a></li><li><a href="global.html#requestListener">requestListener</a></li><li><a href="global.html#saveEntry">saveEntry</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Sun May 17 2026 15:03:08 GMT+0200 (Central European Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

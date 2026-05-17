@@ -1,0 +1,119 @@
+
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tytuł strony</title>
+    <title>Tytuł strony</title>
+</head>
+<body> <form id="controls" style="margin-botton: 20px">
+    <button type="button" id="btnSet">Set</button>
+    <button type="button" id="btnDelete">Delete</button>
+    <button type="button" id="btnAdd">Add</button>
+    </form>
+    <header id="page-header" class="azure panel">
+        <h1>Tytuł strony</h1>
+    </header>
+
+    <nav id="page-nav" class="azure panel">
+        <ul>
+            <li><a href="">Element 1</a></li>
+
+            <li><a href="">Element 2</a></li>
+        </ul>
+    </nav>
+    <aside id="page-aside" class="azure panel">
+        <h1>Panel boczny</h1>
+
+        <h2>Ciekawe odsyłacze</h2>
+
+        <ul>
+            <li><a href="">Odsyłacz 1</a></li>
+
+            <li><a href="">Odsyłacz 2</a></li>
+
+            <li><a href="">Odsyłacz 3</a></li>
+        </ul>
+    </aside>
+
+    <main id="page-main" class="azure panel">
+        <h1>Treść strony</h1>
+        <div id="content-container"></div>
+    </main>
+
+    <footer id="page-footer" class="azure panel">
+        <a href="mailto:your.email.address">Katarzyna Piskorz</a>
+    </footer>
+
+    <script>
+    const btnSet = document.getElementById("btnSet");
+    const btnDelete = document.getElementById("btnDelete");
+
+    const elementsToStyle = [
+        document.getElementById('page-header'),
+        document.getElementById('page-nav'),
+        document.getElementById('page-aside'),
+        document.getElementById('page-main'),
+        document.getElementById('page-footer')
+    ];
+
+    function applyStyles() {
+        for (let element of elementsToStyle) {
+            element.style.border = "1px solid black";
+            element.style.backgroundColor = "#e0ffff";
+            element.style.padding = "10px";
+            element.style.marginBottom = "10px";
+            element.style.boxSizing = "border-box";
+        }
+        document.getElementById('page-nav').style.float = "left";
+        document.getElementById('page-nav').style.width = "20%";
+
+        document.getElementById('page-aside').style.float = "right";
+        document.getElementById('page-aside').style.width = "30%";
+
+        document.getElementById('page-main').style.float = "left";
+        document.getElementById('page-main').style.width = "45%";
+        document.getElementById('page-main').style.clear = "left";
+
+        document.getElementById('page-footer').style.clear = "both";
+    }
+
+    function removeStyles() {
+        for (let element of elementsToStyle) {
+            element.removeAttribute("style");
+        }
+    }
+
+    btnSet.addEventListener('click', applyStyles);
+    btnDelete.addEventListener('click', removeStyles);
+
+    const paragraphs = [
+        "Natenczas Wojski chwycił na taśmie przypięty Swój róg bawoli, długi, cętkowany, kręty...",
+        "Umilkli strzelcy, stali szczwacze zadziwieni Mocą, czystością, dziwną harmoniją pieni...",
+        "Bo w graniu była łowów historyja krótka: Zrazu odzew dźwięczący, rześki: to pobudka..."
+    ];
+
+    const btnAdd = document.getElementById("btnAdd");
+    const contentContainer = document.querySelector("#content-container");
+    let currentParagraph = 0;
+
+    function addContent(){
+        if (currentParagraph < paragraphs.length){
+            const pElement = document.createElement("p");
+
+            pElement.textContent = paragraphs[currentParagraph];
+
+            contentContainer.appendChild(pElement);
+
+            currentParagraph++;
+
+            if (currentParagraph === paragraphs.length){
+                btnAdd.disabled = true;
+            }
+        }
+    }
+    btnAdd.addEventListener('click', addContent);
+    </script>
+
+</body>
+</html>

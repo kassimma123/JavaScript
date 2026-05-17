@@ -1,0 +1,187 @@
+<!-- @author Stanisław Polak <polak@agh.edu.pl> -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation</title>
+    <script src="https://home.agh.edu.pl/~polak/jezyki/js/lab/calculatePrimes.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body>
+<div id="react-root"></div>
+<form onsubmit="event.preventDefault();">
+    <h2>requestAnimationFrame()</h2>
+    <label for="counter">Counter→</label>
+    <output id="counter" style="font-size: 4vh; color: red;">0</output>
+    <br>
+    <button id="start" onclick="startAnimation()">Start</button>
+    <button id="stop" disabled onclick="stopAnimation()">Stop</button>
+    <!-- ************************************************************** -->
+    <hr>
+    <h2>Time-consuming calculations in the main thread</h2>
+    <label for="result_main">Result:</label>
+    <output id="result_main">0</output>
+    <br>
+    <label for="iterations_main">Number of iterations:</label>
+    <input id="iterations_main" type="text" value="50"
+           onfocus="document.forms[0].result_main.value ='0'">
+    <button
+            onclick="document.forms[0].result_main.value = calculatePrimes(document.forms[0].iterations_main.value || 50)">Run
+        calculations</button>
+    <!-- ************************************************************** -->
+    <h2>Time-consuming calculations in a separate thread</h2>
+    <label for="result_worker">Result:</label>
+    <output id="result_worker">0</output>
+    <br>
+    <label for="iterations_worker">Number of iterations:</label>
+    <input id="iterations_worker" type="text" value="50"
+           onfocus="document.forms[0].result_worker.value ='0'">
+    <button
+            onclick="calculatePrimesInBackground(document.forms[0].iterations_worker.value || 50)">Run
+        calculations</button>
+</form>
+<script>
+    let animation;
+    let counter = 0;
+
+    function calculatePrimesInBackground(iterations) {
+        const worker = new Worker('./worker.js');
+
+        worker.onerror = function(error){
+            window.alert('wystąpił błąd w wątku roboczym: ' + error.message);
+        };
+
+        worker.onmessage = function(event){
+            document.forms[0].result_worker.value = "Znaleziono " + event.data.length + " liczb";
+        };
+
+        worker.postMessage(iterations);
+    }
+
+    function startAnimation() {
+        document.forms[0].start.disabled = true;
+        document.forms[0].stop.disabled = false;
+        animation = window.requestAnimationFrame(step);
+    }
+
+    function step() {
+        document.forms[0].counter.value = counter++;
+        animation = window.requestAnimationFrame(step);
+    }
+
+    function stopAnimation() {
+        document.forms[0].start.disabled = false;
+        document.forms[0].stop.disabled = true;
+        window.cancelAnimationFrame(animation)
+    }
+</script>
+
+<script type="text/babel" data-type="module">
+    import React from "https://esm.sh/react/?dev";
+    import ReactDOMClient from "https://esm.sh/react-dom/client/?dev";
+
+    function Counter(props){
+        const [count, setCount] = React.useState(Number(props.initial));
+        const [isRunning, setIsRunning] = React.useState(false);
+        React.useEffect(() => {
+            let intervalId;
+
+            if (isRunning){
+                intervalId = setInterval(() => {
+                    setCount(prevCount => prevCount + 1);
+                }, Number(props.delay))
+            }
+
+            return() => clearInterval(intervalId);
+        }, [isRunning, props.delay]);
+
+        const handleStart = () => setIsRunning(true);
+        const handleStop = () => setIsRunning(false);
+
+        return (
+            <div style={{ backgroundColor: 'lightgreen', padding: '10px', marginBottom: '10px', border: '1px solid darkgreen' }}>
+                <strong>Counter&rarr; </strong>
+                <span style={{ color: 'red', fontSize: '1.2em' }}>{count}</span>
+                <br />
+                <button onClick={handleStart} disabled={isRunning}>Start</button>
+                <button onClick={handleStop} disabled={!isRunning}>Stop</button>
+            </div>
+        );
+    }
+
+    function App() {
+        return (
+            <div>
+                <h2>setInterval() / setTimeout() in React</h2>
+                <Counter initial="10" delay="1000" />
+                <Counter initial="15" delay="500" />
+            </div>
+        );
+    }
+
+    const container = document.getElementById('react-root');
+    const root = ReactDOMClient.createRoot(container);
+    root.render(<App />);
+</script>
+<hr>
+<h2>Web components</h2>
+<web-counter initial="10" delay="1000"></web-counter>
+<web-counter initial="15" delay="500"></web-counter>
+<script>
+    class WebCounter extends HTMLElement{
+        constructor(){
+            super();
+            this.attachShadow({mode:'open'});
+
+            this.count = parseInt(this.getAttribute('initial')) || 0;
+            this.delay = parseInt(this.getAttribute('delay')) || 1000;
+            this.intervalId = null;
+
+            this.shadowRoot.innerHTML = `
+                    <style>
+                        .container { background-color: lightblue; padding: 10px; margin-bottom: 10px; border: 1px solid darkblue; font-family: sans-serif; }
+                        .number { color: red; font-size: 1.2em; font-weight: bold; }
+                    </style>
+                    <div class="container">
+                        <strong>Web Component Counter&rarr; </strong>
+                        <span class="number" id="display">${this.count}</span>
+                        <br>
+                        <button id="btn-start">Start</button>
+                        <button id="btn-stop" disabled>Stop</button>
+                    </div>
+                `;
+        }
+
+        connectedCallback() {
+            this.shadowRoot.getElementById('btn-start').addEventListener('click', () => this.start());
+            this.shadowRoot.getElementById('btn-stop').addEventListener('click', () => this.stop());
+        }
+
+        start() {
+            this.shadowRoot.getElementById('btn-start').disabled = true;
+            this.shadowRoot.getElementById('btn-stop').disabled = false;
+
+            this.intervalId = setInterval(() => {
+                this.count++;
+                this.shadowRoot.getElementById('display').textContent = this.count;
+            }, this.delay);
+        }
+
+        stop() {
+            this.shadowRoot.getElementById('btn-start').disabled = false;
+            this.shadowRoot.getElementById('btn-stop').disabled = true;
+            clearInterval(this.intervalId);
+        }
+    }
+
+    customElements.define('web-counter', WebCounter);
+</script>
+
+</body>
+
+</html>
