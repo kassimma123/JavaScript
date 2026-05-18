@@ -1,6 +1,9 @@
 import http from "node:http";
 import { URL } from "node:url";
 import fs from "node:fs";
+import Debug from "debug";
+
+const debug = Debug("server2");
 
 const GUESTBOOK_FILE = "guestbook.json";
 
@@ -15,7 +18,7 @@ function getEntries() {
             return JSON.parse(data);
         }
     } catch (err) {
-        console.error("Błąd podczas odczytu księgi gości:", err);
+        debug("Błąd podczas odczytu księgi gości:", err);
     }
     return [];
 }
@@ -47,7 +50,7 @@ function escapeHTML(str) {
 }
 
 function requestListener(request, response) {
-    console.log(`Żądanie: ${request.method} ${request.url}`);
+    debug(`Żądanie: ${request.method} ${request.url}`);
     const url = new URL(request.url, `http://${request.headers.host}`);
     const route = [request.method, url.pathname].join(" ");
 
@@ -149,7 +152,7 @@ function requestListener(request, response) {
 
 const server = http.createServer(requestListener);
 server.listen(8000, () => {
-    console.log("Księga gości została uruchomiona na porcie 8000");
-    console.log("Sprawdź: http://localhost:8000/");
-    console.log('Aby zatrzymać serwer, naciśnij "CTRL + C"');
+    debug("Księga gości została uruchomiona na porcie 8000");
+    debug("Sprawdź: http://localhost:8000/");
+    debug('Aby zatrzymać serwer, naciśnij "CTRL + C"');
 });

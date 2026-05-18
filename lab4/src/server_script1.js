@@ -6,6 +6,9 @@
 // const { URL } = require('node:url');
 import http from "node:http";
 import { URL } from "node:url";
+import Debug from "debug";
+
+const debug = Debug("server");
 
 /**
  * Handles incoming requests.
@@ -21,17 +24,17 @@ import { URL } from "node:url";
  */
 
 function requestListener(request, response) {
-    console.log("--------------------------------------");
-    console.log(`The relative URL of the current request: ${request.url}`);
-    console.log(`Access method: ${request.method}`);
-    console.log("--------------------------------------");
+    debug("--------------------------------------");
+    debug(`The relative URL of the current request: ${request.url}`);
+    debug(`Access method: ${request.method}`);
+    debug("--------------------------------------");
     // Create the URL object
     const url = new URL(request.url, `http://${request.headers.host}`);
     /* ************************************************** */
     // if (!request.headers['user-agent'])
     if (url.pathname !== "/favicon.ico")
         // View detailed URL information
-        console.log(url);
+        debug(url);
 
     /* *************** */
     /* "Routes" / APIs */
@@ -261,5 +264,5 @@ function requestListener(request, response) {
 /* ************************************************** */
 const server = http.createServer(requestListener); // The 'requestListener' function is defined above
 server.listen(8000);
-console.log("The server was started on port 8000");
-console.log('To stop the server, press "CTRL + C"');
+debug("The server was started on port 8000");
+debug('To stop the server, press "CTRL + C"');
