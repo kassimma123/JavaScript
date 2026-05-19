@@ -38,9 +38,9 @@ function saveEntry(name, message) {
  * Funkcja ucieczkowa (escape) dla znaków specjalnych HTML, zapobiega atakom XSS.
  */
 function escapeHTML(str) {
-    return str.replace(/[&<>'"]/g, 
+    return str.replace(/[&<>'"]/g,
         tag => ({
-            '&': '&amp;',
+            '&': '&amp;', // encje predefiniowane
             '<': '&lt;',
             '>': '&gt;',
             "'": '&#39;',
@@ -58,7 +58,7 @@ function requestListener(request, response) {
         case "GET /": {
             // 1. Odczytaj wszystkie wpisy
             const entries = getEntries();
-            
+
             // 2. Wygeneruj kod HTML dla wpisów
             const entriesHTML = entries.map(entry => `
                 <div style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
@@ -118,19 +118,19 @@ function requestListener(request, response) {
         case "POST /submit": {
             // 1. Odbiór danych wysłanych z formularza za pomocą metody POST
             let body = '';
-            
+
             // Zdarzenie 'data' jest emitowane, gdy przychodzą kolejne fragmenty (chunks) danych
             request.on('data', chunk => {
                 body += chunk.toString();
             });
-            
+
             // Zdarzenie 'end' jest emitowane po odebraniu całych danych
             request.on('end', () => {
                 // Dekodowanie danych typu 'application/x-www-form-urlencoded' (domyślny typ formularzy)
                 const params = new URLSearchParams(body);
                 const name = params.get("name");
                 const message = params.get("message");
-                
+
                 // Jeśli przysłano wymagane pola, zapisz wpis
                 if (name && message) {
                     saveEntry(name, message);

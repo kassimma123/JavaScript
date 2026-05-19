@@ -50,7 +50,7 @@ if (mode === '--sync') {
 } else if (!mode) {
     console.log('Wprowadź komendy — naciśnięcie Ctrl+D kończy wprowadzanie danych');
     
-    // Używamy modułu readline do eleganckiego czytania wejścia linia po linii
+    // Używamy modułu readline do czytania wejścia linia po linii
     const rl = readline.createInterface({
         input: stdin,
         output: stdout,
