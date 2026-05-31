@@ -1,0 +1,20 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= it.title %></title>
+</head>
+<body>
+    <main>
+        <h1><%= it.title %></h1>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Deno_2021.svg/120px-Deno_2021.svg.png"
+            alt="[Deno logo]">
+        <form method="POST" action="/">
+            <label for="name">Give your name</label>
+            <input name="name"><br>
+            <input type="submit">
+            <input type="reset">
+        </form>
+    </main>
+</body>
+</html>
