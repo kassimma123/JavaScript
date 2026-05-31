@@ -1,7 +1,7 @@
 /**
  * @author Stanisław Polak <polak@agh.edu.pl>
  */
-import { Application, Context, Router } from "jsr:@oak/oak/";
+import { Application, Context, Router } from "jsr:@oak/oak";
 import { Eta } from "https://deno.land/x/eta/src/index.ts";
 import logger from "https://deno.land/x/oak_logger/mod.ts";
 

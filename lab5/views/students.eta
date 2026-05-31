@@ -1,0 +1,37 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= it.title %></title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+        main { max-width: 600px; margin: 0 auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1><%= it.title %></h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nazwisko</th>
+                    <th>Imię</th>
+                    <th>Wydział</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% it.students.forEach(function(student) { %>
+                    <tr>
+                        <td><%= student.lname %></td>
+                        <td><%= student.fname %></td>
+                        <td><%= student.faculty %></td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>
