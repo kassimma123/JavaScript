@@ -1,8 +1,8 @@
 /**
 * @author Stanisław Polak <polak@agh.edu.pl>
 */
-Deno.serve(async (req: Request) => {
-    const url = new URL(req.url);
+Deno.serve(async (req: Request): Promise<Response> => {
+    const url: URL = new URL(req.url);
 
 
     switch ([req.method, url.pathname].join(" ")) {
@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
                 }
             );
         case "POST /": {
-            const data = await req.formData();
+            const data: FormData = await req.formData();
             return new Response(`Hello '${data.get("name")}'`);
         }
         default:
