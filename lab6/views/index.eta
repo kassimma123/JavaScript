@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<!-- @author Stanisław Polak <polak@agh.edu.pl> -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Form</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mocha/mocha.css">
+    <style>
+      table {
+          width: 100%;
+      }
+      td {
+          border: 1px solid #000; 
+          padding: 15px;
+          text-align: left;
+      }
+      th {
+          background-color: #04AA6D;
+          color: white;
+      }
+    </style>
+    <script>
+      /**************************************************************************************/
+      /* Function that retrieves the content of one of the selected text fields of the form */
+      /**************************************************************************************/
+      function getName(http_method){
+          let name = '';
+      
+          // TODO: Here put the code that, depending on the value of the 'http_method' variable — GET / POST — assigns the 'name' variable to the value of the 'name_GET' / 'name_POST' form field
+          if (http_method === 'GET') {
+              name = document.getElementById('name_GET').value;
+          } else if (http_method === 'POST') {
+              name = document.getElementById('name_POST').value;
+          }
+      
+          return name;
+      }
+      
+      /**************************************************************************************/
+      /* Function that performs (asynchronous) query to the web server using AJAX           */
+      /**************************************************************************************/
+      /* http_method ∈ ["GET", "POST"]                                                      */ 
+      /* response_type ∈ ["text", "json", "document"]                                       */ 
+      /* name — Contents of the form's text box — data that needs to be sent asynchronously */
+      /**************************************************************************************/
+      function requestAJAX(http_method, response_type, name, show_alert=false) {
+          //-----------------------------------------------
+          // Create an object representing the request to the web server — see https://developer.mozilla.org/docs/Web/API/XMLHttpRequest
+          //-----------------------------------------------
+          const xhr = new XMLHttpRequest();
+      
+          //-----------------------
+          // Observers registration
+          //-----------------------
+      
+          // If the request was successful
+          xhr.addEventListener("load", function (evt) {                          
+              if (xhr.status === 200) {
+                  console.group('AJAX');
+                  console.log(`HTTP method ⟶\t\t${http_method}\nResponse type ⟶\t${response_type}\nInput data ⟶\t\t${name}`);
+                  console.log(xhr.response);
+                  console.groupEnd();
+                  if(show_alert) {
+                      const div = document.getElementById('response_div');
+                      if (response_type === 'json') {
+                          div.innerText = JSON.stringify(xhr.response);
+                      } else if (response_type === 'document') {
+                          div.innerText = new XMLSerializer().serializeToString(xhr.response);
+                      } else {
+                          div.innerText = xhr.response;
+                      }
+                  } else { 
+                      results.set(`ajax ${http_method} ${response_type}`, xhr.response);
+                      dispatchEvent(received); 
+                  }
+              }
+          });
+      
+          // If the request was failed
+          xhr.addEventListener("error", function (evt) {
+              window.alert('There was a problem with this request.');
+          });
+      
+          //--------------------------------------------------------------------------
+          // Configuration and execution of the (asynchronous) query to the web server
+          //--------------------------------------------------------------------------
+          xhr.responseType = response_type;  // Type of data received by the 'load' observer
+          xhr.withCredentials = true; // DO NOT MODIFY OR REMOVE
+      
+          //*********************************
+          // Specifying connection parameters
+          //*********************************
+          if(http_method === 'GET') {
+              xhr.open('GET', 'http://localhost:8000/submit?name=' + encodeURIComponent(name), true); // TO BE MODIFIED
+          }    
+          if(http_method === 'POST'){
+              xhr.open('POST', 'http://localhost:8000/submit', true);
+          }
+          //****************************************************************************************
+          // What is the acceptable data type — the server part should return data of the given type
+          // Default value: '*/*'
+          //****************************************************************************************
+          switch(response_type){
+              case 'json':
+                  xhr.setRequestHeader('Accept', 'application/json');
+                  break;
+              case 'document':
+                  xhr.setRequestHeader('Accept', 'application/xml');
+                  break;
+          }  
+      
+          //****************************
+          // Making an asynchronous call
+          //****************************
+          if(http_method === 'GET') {
+              xhr.send(null);
+          }
+          if(http_method === 'POST') { 
+              // TO BE ADDED: you must specify the value of the 'Content-type' header — you must inform the server that the body content contains data of the "application/x-www-form-urlencoded" type
+              xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+              xhr.send('name=' + encodeURIComponent(name)); // TO BE MODIFIED
+          }
+      }
+      
+      /**************************************************************************************/
+      /* Function that performs (asynchronous) query to the web server  usingFetch API      */
+      /**************************************************************************************/
+      /* http_method ∈ ["GET", "POST"]                                                      */ 
+      /* response_type ∈ ["text", "json", "xml"]                                            */ 
+      /* name — Contents of the form's text box — data that needs to be sent asynchronously */
+      /**************************************************************************************/
+      function getTime(europe_city) {
+          return new Promise(async (resolve, reject) => {
+              try {
+                  const response = await fetch(`https://timeapi.io/api/Time/current/zone?timeZone=Europe/${encodeURIComponent(europe_city)}`);
+                  if (response.status === 200) {
+                      const data = await response.json();
+                      resolve(data);
+                  } else if (response.status === 404) {
+                      const err = await response.text();
+                      reject(err);
+                  } else {
+                      reject(`Unexpected status code: ${response.status}`);
+                  }
+              } catch(error) {
+                  reject(error);
+              }
+          });
+      }
+
+      async function invokeGetTime() {
+          const city = document.getElementById('city').value;
+          const div = document.getElementById('response_div');
+          try {
+              const data = await getTime(city);
+              div.innerText = "Pobrany czas (" + data.timeZone + "): " + data.dateTime;
+          } catch(error) {
+              div.innerText = "Błąd z serwera: " + error;
+          }
+      }
+
+      async function requestFetchAPI(http_method, response_type, name, show_alert=false) {
+          let accept = '*/*';
+      
+          switch(response_type){
+              case 'json':
+                  accept = 'application/json';
+                  break;
+              case 'xml':
+                  accept = 'application/xml';
+                  break;
+          }
+          //--------------------------------------------------------------------------
+          // Configuration and execution of the (asynchronous) query to the web server
+          //--------------------------------------------------------------------------
+          try {
+              let response;
+              if(http_method === 'GET') {
+                  response = await fetch('http://localhost:8000/submit?name=' + encodeURIComponent(name), { // TO BE MODIFIED
+                      method: 'GET',
+                      credentials: "include", // DO NOT MODIFY OR REMOVE
+                      headers: {
+                          Accept: accept
+                      }
+                  });
+              } else if(http_method === 'POST') {
+                  response = await fetch('http://localhost:8000/submit', {
+                      method: 'POST',
+                      credentials: "include", // // DO NOT MODIFY OR REMOVE
+                      body: 'name=' + encodeURIComponent(name),
+                      headers: {
+                          'Content-Type': 'application/x-www-form-urlencoded',
+                          Accept: accept
+                      }
+                  });
+              }
+      
+              if (!response.ok)
+                  throw Error(response.statusText);
+      
+              console.group('Fetch API');
+              console.log(`HTTP method ⟶\t\t${http_method}\nResponse type ⟶\t${response_type}\nInput data ⟶\t\t${name}`);
+              let data;
+      
+              if (!response.headers.get('content-type')?.includes('application/json')) {
+                  // If the received data is plain text or an XML document
+                  data = await response.text(); 
+              }
+              else {
+                  //If the received data is a JSON document
+                  data = await response.json();
+              }
+              console.log(data);
+              console.groupEnd();   
+              
+              if(show_alert) {
+                  const div = document.getElementById('response_div');
+                  if (response_type === 'json') {
+                      div.innerText = JSON.stringify(data);
+                  } else {
+                      div.innerText = data;
+                  }
+              } else {
+                  results.set(`fetch ${http_method} ${response_type}`, data);
+                  dispatchEvent(received);
+              }
+          } catch(error) { // if the promise is rejected
+              window.alert(error);
+          }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mocha/mocha.js"> </script>
+    <script type="module">
+      import { expect } from 'https://cdn.jsdelivr.net/npm/chai/chai.js' 
+      window.expect = expect
+    </script>
+  </head>
+  <body>
+    <script class="mocha-init">
+      mocha.setup('bdd');
+      mocha.checkLeaks(); 
+    </script>
+    <main>
+      <table>
+        <tr>
+          <th> </th>
+          <th>GET</th>
+          <th>POST</th>
+        </tr>
+        <tr> 
+          <th colspan="3" style=" background-color: #04556D;">Without AJAX and Fetch API</th>
+        </tr>
+        <tr>
+          <th>HTTP</th>
+          <td> 
+            <form action="http://localhost:8000/submit" method="GET">
+              <label for="name_GET">Your name</label>
+              <input type="text" id="name_GET" name="name"><br>
+              <input type="submit" value="text">
+            </form>
+          </td>
+          <td> 
+            <form action="http://localhost:8000/submit" method="POST"> 
+              <label for="name_POST">Your name</label>
+              <input type="text" id="name_POST" name="name"><br>
+              <input type="submit" value="text">
+            </form>
+          </td>
+        </tr>
+        <tr> 
+          <th colspan="3" style=" background-color: #04556D;"> Asynchronous requests</th>
+        </tr>
+        <tr> 
+          <th>AJAX </th>
+          <td>
+            <button onclick="console.clear() ; requestAJAX(&quot;GET&quot;,&quot;text&quot;, getName('GET'), true)">text</button>
+            <button onclick="console.clear() ; requestAJAX(&quot;GET&quot;,&quot;json&quot;, getName('GET'), true)">json</button>
+            <button onclick="console.clear() ; requestAJAX(&quot;GET&quot;,&quot;document&quot;, getName('GET'), true)">document</button>
+          </td>
+          <td>
+            <button onclick="console.clear() ; requestAJAX(&quot;POST&quot;,&quot;text&quot;, getName('POST'), true)">text</button>
+            <button onclick="console.clear() ; requestAJAX(&quot;POST&quot;,&quot;json&quot;, getName('POST'), true)">json</button>
+            <button onclick="console.clear() ; requestAJAX(&quot;POST&quot;,&quot;document&quot;, getName('POST'), true)">document</button>
+          </td>
+        </tr>
+        <tr>
+          <th>Fetch API </th>
+          <td>
+            <button onclick="console.clear() ; requestFetchAPI(&quot;GET&quot;,&quot;text&quot;, getName('GET'), true)">text</button>
+            <button onclick="console.clear() ; requestFetchAPI(&quot;GET&quot;,&quot;json&quot;, getName('GET'), true)">json</button>
+            <button onclick="console.clear() ; requestFetchAPI(&quot;GET&quot;,&quot;xml&quot;, getName('GET'), true)">xml</button>
+          </td>
+          <td>
+            <button onclick="console.clear() ; requestFetchAPI(&quot;POST&quot;,&quot;text&quot;, getName('POST'), true)">text</button>
+            <button onclick="console.clear() ; requestFetchAPI(&quot;POST&quot;,&quot;json&quot;, getName('POST'), true)">json</button>
+            <button onclick="console.clear() ; requestFetchAPI(&quot;POST&quot;,&quot;xml&quot;, getName('POST'), true)">xml</button>
+          </td>
+        </tr>
+      </table>
+      
+      <hr>
+      <h2>Time API (Task 3)</h2>
+      <label for="city">Europe City:</label>
+      <input type="text" id="city" value="Warsaw">
+      <button onclick="invokeGetTime()">Get Time</button>
+
+      <h2>Server Response:</h2>
+      <div id="response_div" style="min-height: 50px; border: 1px solid #ccc; padding: 10px; margin-top: 10px; background-color: #f9f9f9; color: black;"></div>
+    </main>
+    <h1>Unit tests</h1>
+    <button onclick="window.location.reload();">Restart</button>
+    <div id="mocha"></div>
+    <script>
+      const name = 'John Doe ą/?:@&=+$#';
+      
+      if(window.location.port == 8000) { 
+          window.addEventListener("load", (event) => {
+              for(let method of ["GET","POST"]){
+                  for(let type of ["text", "json", "document"])
+                      requestAJAX(method, type, name);                        
+                  for(let type of ["text", "json", "xml"])
+                      requestFetchAPI(method, type, name);
+              }
+          })
+      };
+    </script>
+    <script class="mocha-exec">
+      //****************************************************************************************
+      // Unit tests
+      //****************************************************************************************
+      var results = new Map();
+      var received = new Event('received');
+      var test_executed = false;
+      
+      function decodeHtml(html) {
+          var txt = document.createElement("textarea");
+          txt.innerHTML = html;
+      
+          return txt.value;
+      }
+      
+      addEventListener('received', (e) => {
+          if(!test_executed && results.size === 12){
+              const parser = new DOMParser();
+              const xml_document= parser.parseFromString("<welcome>Hello 'John Doe ą/?:@&amp;=+$#'</welcome>","text/xml");
+      
+              describe('AJAX requests', function() {
+                  it(`Returns "Hello '${name}'" for requestAJAX('GET','text')`, function() {
+                      expect(results.get('ajax GET text')).to.equal(`Hello '${name}'`);
+                  });
+                  it(`Returns "Hello '${name}'" for requestAJAX('GET','json')`, function() {
+                      expect(results.get('ajax GET json')).to.eql({welcome: `Hello '${name}'`});
+                  });
+                  it(`Returns "Hello '${name}'" for requestAJAX('GET','document')`, function() {
+                      expect(results.get('ajax GET document').documentElement.firstChild.data).to.equal(xml_document.documentElement.firstChild.data);
+                  });
+                  it(`Returns "Hello '${name}'" for requestAJAX('POST','text')`, function() {
+                      expect(results.get('ajax POST text')).to.equal(`Hello '${name}'`);
+                  });
+                  it(`Returns "Hello '${name}'" for requestAJAX('POST','json')`, function() {
+                      expect(results.get('ajax POST json')).to.eql({welcome: `Hello '${name}'`});
+                  });
+                  it(`Returns "Hello '${name}'" for requestAJAX('POST','document')`, function() {
+                      expect(results.get('ajax POST document').documentElement.firstChild.data).to.equal(xml_document.documentElement.firstChild.data);
+                  });
+              });
+      
+              describe('Fetch API requests', function() {   
+                  it(`Returns "Hello '${name}'" for requestFetchAPI('GET','text')`, async function() {
+                      const result  = await results.get('fetch GET text')
+                      expect(result).to.equal(`Hello '${name}'`);
+                  });
+                  it(`Returns "Hello '${name}'" for requestFetchAPI('GET','json')`, async function() {
+                      const result  = await results.get('fetch GET json')
+                      expect(result).to.eql({welcome: `Hello '${name}'`});
+                  });   
+                  it(`Returns "Hello '${name}'" for requestFetchAPI('GET','xml')`, async function() {
+                      const result  = await results.get('fetch GET xml');
+                      expect(decodeHtml(result)).to.equal(`<welcome>Hello '${name}'</welcome>`);
+                  }); 
+                  it(`Returns "Hello '${name}'" for requestFetchAPI('POST','text')`, async function() {
+                      const result  = await results.get('fetch POST text')
+                      expect(result).to.equal(`Hello '${name}'`);                   
+                  });
+                  it(`Returns "Hello '${name}'" for requestFetchAPI('POST','json')`, async function() {
+                      const result  = await results.get('fetch POST json')
+                      expect(result).to.eql({welcome: `Hello '${name}'`});
+                  });   
+                  it(`Returns "Hello '${name}'" for requestFetchAPI('POST','xml')`, async function() {
+                      const result  = await results.get('fetch POST xml');
+                      expect(decodeHtml(result)).to.equal(`<welcome>Hello '${name}'</welcome>`);
+                  });    
+              });     
+      
+              mocha.run();
+              test_executed = true;
+          }
+      });        
+    </script>
+  </body>
+</html>
